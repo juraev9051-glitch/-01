@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Барабан Поле чудес</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #101827, #263c61);
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 20px 10px;
+}
+
+h1 {
+  font-size: 30px;
+  margin-bottom: 25px;
+}
+
+.wheel-container {
+  position: relative;
+  width: min(92vw, 420px);
+  margin: auto;
+}
+
+canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.pointer {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  width: 0;
+  height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-top: 35px solid #ffd166;
+}
+
+button {
+  margin-top: 25px;
+  padding: 16px 35px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffe08a, #ffad33);
+  color: #241700;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+}
+
+.result {
+  margin: 25px auto;
+  font-size: 28px;
+  font-weight: bold;
+  color: #ffd166;
+  min-height: 40px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎡 Поле чудес</h1>
+
+<div class="wheel-container">
+  <div class="pointer"></div>
+  <canvas id="wheel" width="800" height="800"></canvas>
+</div>
+
+<button id="spin">🎯 КРУТИТЬ!</button>
+
+<div class="result" id="result">Кто победит? 🤔</div>
+
+<script>
+const items = [
+  { text: "Анис", emoji: false },
+  { text: "💯", emoji: true },
+  { text: "Шерзод", emoji: false },
+  { text: "👑", emoji: true },
+  { text: "Шавкат", emoji: false },
+  { text: "😈", emoji: true },
+  { text: "Саид", emoji: false },
+  { text: "🛑", emoji: true },
+  { text: "Дурахшон", emoji: false },
+  { text: "🐐", emoji: true }
+];
+
+const colors = [
+  "#e63946",
+  "#457b9d",
+  "#2a9d8f",
+  "#f4a261",
+  "#9b5de5",
+  "#0077b6",
+  "#e76f51",
+  "#6a994e",
+  "#bc6c25",
+  "#4361ee"
+];
+
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+
+const center = 400;
+const radius = 370;
+const sector = (Math.PI * 2) / items.length;
+
+let angle = 0;
+let spinning = false;
+let previousWinner = -1;
+
+function drawWheel() {
+  ctx.clearRect(0, 0, 800, 800);
+
+  ctx.save();
+  ctx.translate(center, center);
+
+  items.forEach((item, i) => {
+    const start = angle + i * sector - Math.PI / 2;
+    const end = start + sector;
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, start, end);
+    ctx.closePath();
+
+    ctx.fillStyle = colors[i];
+    ctx.fill();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    const middle = start + sector / 2;
+
+    ctx.save();
+    ctx.rotate(middle);
+
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffffff";
+
+    if (item.emoji) {
+      ctx.font = "48px Arial";
+    } else {
+      ctx.font = "bold 28px Arial";
+    }
+
+    ctx.shadowColor = "#000000";
+    ctx.shadowBlur = 3;
+
+    ctx.fillText(item.text, radius - 20, 0);
+
+    ctx.restore();
+  });
+
+  ctx.beginPath();
+  ctx.arc(0, 0, 55, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+
+  ctx.strokeStyle = "#ffd166";
+  ctx.lineWidth = 8;
+  ctx.stroke();
+
+  ctx.fillStyle = "#172338";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 24px Arial";
+  ctx.fillText("GO!", 0, 0);
+
+  ctx.restore();
+}
+
+drawWheel();
+
+document.getElementById("spin").addEventListener("click", () => {
+  if (spinning) return;
+
+  spinning = true;
+
+  const button = document.getElementById("spin");
+  const result = document.getElementById("result");
+
+  button.disabled = true;
+  button.textContent = "🔄 КРУТИТСЯ...";
+  result.textContent = "";
+
+  // Не повторяем предыдущий результат подряд.
+  let choices = items
+    .map((item, index) => index)
+    .filter(index => index !== previousWinner);
+
+  const winner = choices[
+    Math.floor(Math.random() * choices.length)
+  ];
+
+  // Рассчитываем положение выбранного сектора под стрелкой.
+  const targetAngle =
+    (Math.PI * 2 - (winner * sector + sector / 2))
+    % (Math.PI * 2);
+
+  const currentAngle =
+    ((angle % (Math.PI * 2)) + Math.PI * 2)
+    % (Math.PI * 2);
+
+  const extraRotation =
+    (targetAngle - currentAngle + Math.PI * 2)
+    % (Math.PI * 2);
+
+  const startAngle = angle;
+  const totalRotation =
+    Math.PI * 2 * (5 + Math.floor(Math.random() * 4))
+    + extraRotation;
+
+  const duration = 4500;
+  const startTime = performance.now();
+
+  function animate(now) {
+    const progress = Math.min(
+      1,
+      (now - startTime) / duration
+    );
+
+    // Плавное замедление.
+    const eased = 1 - Math.pow(1 - progress, 4);
+
+    angle = startAngle + totalRotation * eased;
+
+    drawWheel();
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      angle = targetAngle;
+      drawWheel();
+
+      previousWinner = winner;
+
+      result.textContent =
+        "Выпало: " + items[winner].text;
+
+      button.disabled = false;
+      button.textContent = "🎯 КРУТИТЬ ЕЩЁ";
+
+      spinning = false;
+    }
+  }
+
+  requestAnimationFrame(animate);
+});
+</script>
+
+</body>
+</html>
